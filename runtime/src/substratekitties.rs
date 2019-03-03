@@ -8,24 +8,30 @@
 /// For more guidance on Substrate modules, see the example module
 /// https://github.com/paritytech/substrate/blob/gav-template/srml/example/src/lib.rs
 
-use support::{decl_module, decl_storage, decl_event, StorageValue, dispatch::Result};
-use system::ensure_signed;
+use support::{decl_module, decl_storage, decl_event, StorageMap, dispatch::Result};
+use { balances, system::ensure_signed };
+use parity_codec_derive::{Encode, Decode};
+use runtime_primitives::traits::{As, Hash};
 
 /// The module's configuration trait.
-pub trait Trait: system::Trait {
-	// TODO: Add other types and constants required configure this module.
-
+pub trait Trait: balances::Trait {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
+#[derive(Encode, Decode, Default, Clone, PartialEq)]
+pub struct Kitty<Hash, Balance> {
+	id: Hash,
+	dna: Hash,
+	price: Balance,
+	gen: u64
+}
+
 /// This module's storage items.
 decl_storage! {
-	trait Store for Module<T: Trait> as TemplateModule {
-		// Just a dummy storage item. 
-		// Here we are declaring a StorageValue, `Something` as a Option<u32>
-		// `get(something)` is the default getter which returns either the stored `u32` or `None` if nothing stored
-		Something get(something): Option<u32>;
+	trait Store for Module<T: Trait> as KittyStorage {
+		pub OwnedKitty get(kitty): map T::AccountId => Kitty<T::Hash, T::Balance>;
+		pub ValueOf get(value_of): map T::AccountId => u64;
 	}
 }
 
@@ -36,31 +42,27 @@ decl_module! {
 		// this is needed only if you are using events in your module
 		fn deposit_event<T>() = default;
 
-		// Just a dummy entry point.
-		// function that can be called by the external world as an extrinsics call
-		// takes a parameter of the type `AccountId`, stores it and emits an event
-		pub fn do_something(origin, something: u32) -> Result {
-			// TODO: You only need this if you want to check it was signed.
-			let who = ensure_signed(origin)?;
+		fn create_kitty(origin) -> Result {
+		   let sender = ensure_signed(origin)?;
 
-			// TODO: Code to execute when something calls this.
-			// For example: the following line stores the passed in u32 in the storage
-			<Something<T>>::put(something);
+		   let new_kitty = Kitty {
+			   id: <T as system::Trait>::Hashing::hash_of(&0),
+			   dna: <T as system::Trait>::Hashing::hash_of(&0),
+			   price: <T::Balance as As<u64>>::sa(0),
+			   gen: 0,
+		   };
 
-			// here we are raising the Something event
-			Self::deposit_event(RawEvent::SomethingStored(something, who));
-			Ok(())
-		}
+		   <OwnedKitty<T>>::insert(&sender, new_kitty);
+
+		   Ok(())
+	   }
 	}
 }
 
 decl_event!(
 	/// An event in this module.
-	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
-		// Just a dummy event.
-		// Event `Something` is declared with a parameter of the type `u32` and `AccountId`
-		// To emit this event, we call the deposit funtion, from our runtime funtions
-		SomethingStored(u32, AccountId),
+	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId, Hash = <T as system::Trait>::Hash {
+		SomethingStored(AccountId, Hash),
 	}
 );
 

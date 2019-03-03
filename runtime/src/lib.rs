@@ -32,7 +32,7 @@ pub use timestamp::Call as TimestampCall;
 pub use balances::Call as BalancesCall;
 pub use runtime_primitives::{Permill, Perbill};
 pub use timestamp::BlockPeriod;
-pub use support::{StorageValue, construct_runtime};
+pub use support::{StorageValue, StorageMap, construct_runtime};
 
 /// Alias to Ed25519 pubkey that identifies an account on the chain.
 pub type AccountId = primitives::H256;
@@ -46,8 +46,7 @@ pub type BlockNumber = u64;
 /// Index of an account's extrinsic in the chain.
 pub type Nonce = u64;
 
-/// Used for the module template in `./template.rs`
-mod template;
+mod substratekitties;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -175,8 +174,8 @@ impl sudo::Trait for Runtime {
 	type Proposal = Call;
 }
 
-/// Used for the module template in `./template.rs`
-impl template::Trait for Runtime { 
+/// Used for the module template in `./substratekitties.rs`
+impl substratekitties::Trait for Runtime {
 	type Event = Event;
 }
 
@@ -194,8 +193,7 @@ construct_runtime!(
 		Balances: balances,
 		Sudo: sudo,
 		Fees: fees::{Module, Storage, Config<T>, Event<T>},
-		// Used for the module template in `./template.rs`
-		TemplateModule: template::{Module, Call, Storage, Event<T>},
+		Substratekitties: substratekitties::{Module, Call, Storage, Event<T>},
 	}
 );
 
