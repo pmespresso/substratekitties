@@ -8,7 +8,8 @@
 /// For more guidance on Substrate modules, see the example module
 /// https://github.com/paritytech/substrate/blob/gav-template/srml/example/src/lib.rs
 
-use support::{decl_module, decl_storage, decl_event, StorageMap, dispatch::Result};
+use parity_codec::Encode;
+use support::{decl_module, decl_storage, decl_event, ensure, StorageMap, StorageValue, dispatch::Result};
 use { balances, system::ensure_signed };
 use parity_codec_derive::{Encode, Decode};
 use runtime_primitives::traits::{As, Hash};
@@ -30,8 +31,10 @@ pub struct Kitty<Hash, Balance> {
 /// This module's storage items.
 decl_storage! {
 	trait Store for Module<T: Trait> as KittyStorage {
-		pub OwnedKitty get(kitty): map T::AccountId => Kitty<T::Hash, T::Balance>;
-		pub ValueOf get(value_of): map T::AccountId => u64;
+		pub Kitties get(kitty): map T::Hash => Kitty<T::Hash, T::Balance>;
+		pub KittyOwner get(kitty_owner): map T::Hash => T::AccountId;
+		pub OwnedKitty get(owned_kitty): map T::AccountId => Kitty<T::Hash, T::Balance>;
+		pub Nonce get(nonce): u64;
 	}
 }
 
@@ -44,15 +47,24 @@ decl_module! {
 
 		fn create_kitty(origin) -> Result {
 		   let sender = ensure_signed(origin)?;
+		   let nonce = <Nonce<T>>::get();
+		   let random_seed = <system::Module<T>>::random_seed();
+		   let random_hash = (random_seed, &sender, nonce).using_encoded(<T as system::Trait>::Hashing::hash);
+
+		   ensure!(!<Kitties<T>>::exists(random_hash), "This new id already exists.");
 
 		   let new_kitty = Kitty {
-			   id: <T as system::Trait>::Hashing::hash_of(&0),
-			   dna: <T as system::Trait>::Hashing::hash_of(&0),
+			   id: random_hash,
+			   dna: random_hash,
 			   price: <T::Balance as As<u64>>::sa(0),
 			   gen: 0,
 		   };
 
+		   <Kitties<T>>::insert(&random_hash, &new_kitty);
+		   <KittyOwner<T>>::insert(random_hash, &sender);
 		   <OwnedKitty<T>>::insert(&sender, new_kitty);
+
+		   <Nonce<T>>::mutate(|n| *n += 1);
 
 		   Ok(())
 	   }
