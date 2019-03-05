@@ -50,19 +50,22 @@ decl_module! {
 		   let nonce = <Nonce<T>>::get();
 		   let random_seed = <system::Module<T>>::random_seed();
 		   let random_hash = (random_seed, &sender, nonce).using_encoded(<T as system::Trait>::Hashing::hash);
+		   let initial_price = <T::Balance as As<u64>>::sa(0);
 
 		   ensure!(!<Kitties<T>>::exists(random_hash), "This new id already exists.");
 
 		   let new_kitty = Kitty {
 			   id: random_hash,
 			   dna: random_hash,
-			   price: <T::Balance as As<u64>>::sa(0),
+			   price: initial_price,
 			   gen: 0,
 		   };
 
 		   <Kitties<T>>::insert(&random_hash, &new_kitty);
 		   <KittyOwner<T>>::insert(random_hash, &sender);
 		   <OwnedKitty<T>>::insert(&sender, new_kitty);
+
+			Self::deposit_event(RawEvent::KittyCreated(sender, random_hash));
 
 		   <Nonce<T>>::mutate(|n| *n += 1);
 
@@ -74,7 +77,7 @@ decl_module! {
 decl_event!(
 	/// An event in this module.
 	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId, Hash = <T as system::Trait>::Hash {
-		SomethingStored(AccountId, Hash),
+		KittyCreated(AccountId, Hash),
 	}
 );
 
