@@ -60,8 +60,6 @@ decl_module! {
 		   let random_hash = (random_seed, &sender, nonce).using_encoded(<T as system::Trait>::Hashing::hash);
 		   let initial_price = <T::Balance as As<u64>>::sa(0);
 
-		   ensure!(!<Kitties<T>>::exists(random_hash), "This new id already exists.");
-
 		   let new_kitty = Kitty {
 			   id: random_hash,
 			   dna: random_hash,
@@ -69,28 +67,38 @@ decl_module! {
 			   gen: 0,
 		   };
 
-		   let curr_kitty_count = Self::kitties_count();
-		   let updated_kitty_count = curr_kitty_count.checked_add(1).ok_or("Overflow error, couldn't add another kitty to storage.")?;
-
-		   <Kitties<T>>::insert(random_hash, &new_kitty);
-		   <KittyOwner<T>>::insert(random_hash, &sender);
-		   <AllKittiesCount<T>>::put(updated_kitty_count);
-		   <IndexOfKitty<T>>::insert(random_hash, curr_kitty_count);
-		   <KittyByIndex<T>>::insert(curr_kitty_count, random_hash);
-
-		   let owned_kitty_count = Self::num_kitties_owned_by(&sender);
-		   let updated_owned_kitty_count = owned_kitty_count.checked_add(1).ok_or("Overflow error, couldn't add owned kitty to storage.")?;
-
-		   <OwnedKittiesArray<T>>::insert((sender.clone(), owned_kitty_count), &new_kitty);
-		   <OwnedKittiesCount<T>>::insert(&sender, updated_owned_kitty_count);
-		   <OwnedKittiesIndex<T>>::insert(random_hash, owned_kitty_count);
-
-		   Self::deposit_event(RawEvent::KittyCreated(sender, random_hash));
+		   Self::_mint(sender, random_hash, new_kitty);
 
 		   <Nonce<T>>::mutate(|n| *n += 1);
 
 		   Ok(())
 	   }
+	}
+}
+
+impl <T: Trait> Module<T> {
+	fn _mint(_to: T::AccountId, _kitty_id: T::Hash, _new_kitty: Kitty<T::Hash, T::Balance>) -> Result {
+		ensure!(!<Kitties<T>>::exists(_kitty_id), "This new id already exists.");
+
+		let curr_kitty_count = Self::kitties_count();
+		let updated_kitty_count = curr_kitty_count.checked_add(1).ok_or("Overflow error, couldn't add another kitty to storage.")?;
+
+		<Kitties<T>>::insert(_kitty_id, &_new_kitty);
+		<KittyOwner<T>>::insert(_kitty_id, &_to);
+		<AllKittiesCount<T>>::put(updated_kitty_count);
+		<IndexOfKitty<T>>::insert(_kitty_id, curr_kitty_count);
+		<KittyByIndex<T>>::insert(curr_kitty_count, _kitty_id);
+
+		let owned_kitty_count = Self::num_kitties_owned_by(&_to);
+		let updated_owned_kitty_count = owned_kitty_count.checked_add(1).ok_or("Overflow error, couldn't add owned kitty to storage.")?;
+
+		<OwnedKittiesArray<T>>::insert((_to.clone(), owned_kitty_count), &_new_kitty);
+		<OwnedKittiesCount<T>>::insert(&_to, updated_owned_kitty_count);
+		<OwnedKittiesIndex<T>>::insert(_kitty_id, owned_kitty_count);
+
+		Self::deposit_event(RawEvent::KittyCreated(_to, _kitty_id));
+
+		Ok(())
 	}
 }
 
